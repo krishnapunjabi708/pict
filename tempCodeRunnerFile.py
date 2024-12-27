@@ -1,1 +1,1 @@
-Plant
+df = pd.merge(ndvi_df, yield_df, on='NDVI')  # Replace 'common_column' with the actual column name

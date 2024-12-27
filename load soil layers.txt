@@ -1,0 +1,70 @@
+//load soil layers 
+var sand = ee.Image("projects/soilgrids-isric/sand_mean");
+
+//set visualization parameters
+var imageVisParam = {"opacity":1,"bands":["sand_0-5cm_mean"],"min":10,"max":800,"palette":["ffef29","0000ff"]};
+
+//add layer to the map
+Map.addLayer(sand, imageVisParam)
+Map.setCenter(12.54122, 48.47531, 5)
+
+//click run to view
+// Load a satellite image collection (e.g., Sentinel-2)
+// Load Sentinel-2 image collection
+var collection = ee.ImageCollection('COPERNICUS/S2')
+  .filterDate('2024-01-01', '2024-12-31')  // Adjust to the desired date range
+  .filterBounds(ee.Geometry.Point([73.8567, 18.5204])); // Center point of Pune
+
+// Define the bounding box for Pune
+var roi = ee.Geometry.Rectangle([73.5, 18.3, 74.2, 18.8]); // Approximate bounding box
+
+// Clip images to the ROI
+collection = collection.map(function(image) {
+  return image.clip(roi);
+});
+
+// Function to calculate NDVI
+var calculateNDVI = function(image) {
+  var ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI'); // Sentinel-2 bands
+  return image.addBands(ndvi);
+};
+
+// Apply NDVI calculation
+var withNDVI = collection.map(calculateNDVI);
+
+// Compute median NDVI over the year
+var ndviComposite = withNDVI.select('NDVI').median();
+
+// Display NDVI on the map
+Map.centerObject(roi, 10);  // Center map over ROI
+Map.addLayer(ndviComposite, {min: 0, max: 1, palette: ['red', 'yellow', 'green']}, 'Median NDVI');
+
+// Calculate average NDVI for the region
+var ndviStats = ndviComposite.reduceRegion({
+  reducer: ee.Reducer.mean(),
+  geometry: roi,
+  scale: 30, // Spatial resolution (30m for Sentinel-2)
+  maxPixels: 1e9
+});
+
+// Print average NDVI
+print('Average NDVI:', ndviStats.get('NDVI'));
+
+// Yield estimation using NDVI
+// Replace coefficients with specific crop model values
+var a = 10;  // Coefficient (example value)
+var b = 5;   // Intercept (example value)
+var averageNDVI = ee.Number(ndviStats.get('NDVI'));
+var estimatedYield = averageNDVI.multiply(a).add(b);
+
+// Print estimated yield
+print('Estimated Yield:', estimatedYield);
+
+// Export NDVI composite image to Google Drive
+Export.image.toDrive({
+  image: ndviComposite,
+  description: 'NDVI_Composite_Pune',
+  scale: 30,
+  region: roi,
+  maxPixels: 1e9
+});

@@ -26,7 +26,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 models = {
     "Linear Regression": LinearRegression(),
     "Decision Tree Regression": DecisionTreeRegressor(random_state=42),
-    # "Random Forest Regression": RandomForestRegressor(random_state=42),
+    "Random Forest Regression": RandomForestRegressor(random_state=42),
     "XGBoost Regression": xgb.XGBRegressor(random_state=42)
 }
 
